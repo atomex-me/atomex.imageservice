@@ -1,0 +1,22 @@
+upstream docker_atomex_images_flask {
+    server atomex_images_flask;
+}
+
+server {
+    listen            ${NGINX_PORT};
+    listen       [::]:${NGINX_PORT};
+
+    location / {
+      proxy_set_header Host             $host;
+      proxy_set_header X-Real-IP        $remote_addr;
+
+      root   /media;
+      try_files $uri $uri/ =404;
+    }
+
+    error_page 404    =404      @err404;
+      location @err404 {
+           rewrite ^/(.*) /       break;
+           proxy_pass http://docker_atomex_images_flask;
+      }
+}
