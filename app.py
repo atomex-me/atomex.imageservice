@@ -9,7 +9,7 @@ from moviepy.video.io.VideoFileClip import VideoFileClip
 
 app = Flask(__name__)
 
-settings = dict(OUTER_IMAGE_FORMAT='png', NFT_PREVIEW_SIZE=(500, 500), TOKEN_PREVIEW_SIZE=(150, 150))
+settings = dict(OUTER_IMAGE_FORMAT='png', NFT_PREVIEW_SIZE=(500, 500), TOKEN_PREVIEW_SIZE=(150, 150), TIMEOUT_SEC=240)
 
 
 @app.route('/<contract>/<token_id>')
@@ -18,6 +18,7 @@ def main(contract, token_id):
         token_id = token_id.split('.')[0]
         tzkt_response = requests.get(f'https://api.tzkt.io/v1/tokens?tokenId={token_id}&contract={contract}')
         if tzkt_response.status_code != 200:
+            print(f'TzKT response not 200 on {contract}/{token_id}\n{tzkt_response.text}')
             return tzkt_response.text, tzkt_response.status_code
 
         json_response = tzkt_response.json()[0]
@@ -47,7 +48,7 @@ def main(contract, token_id):
             if not os.path.exists(temp_dir):
                 os.makedirs(temp_dir)
 
-            artifact_file_response = requests.get(artifact_uri)
+            artifact_file_response = requests.get(artifact_uri, timeout=settings["TIMEOUT_SEC"])
 
         # handle Tokens preview url
         else:
@@ -66,7 +67,7 @@ def main(contract, token_id):
             if thumbnail_uri is not None:
                 if thumbnail_uri.startswith(ipfs_prefix):
                     thumbnail_uri = f'{ipfs_http}/{thumbnail_uri[len(ipfs_prefix):]}'
-                artifact_file_response = requests.get(thumbnail_uri)
+                artifact_file_response = requests.get(thumbnail_uri, timeout=settings["TIMEOUT_SEC"])
             else:
                 artifact_file_response = requests.get(f'https://services.tzkt.io/v1/avatars/{contract}')
 
@@ -105,7 +106,8 @@ def main(contract, token_id):
             os.remove(temp_video_file_name)
             os.remove(temp_image_file_name)
 
-    except Exception:
+    except Exception as e:
+        print(f'Exception during getting {contract}/{token_id}\n{e}')
         return send_file('default.png', f'image/{settings["OUTER_IMAGE_FORMAT"]}')
 
 
