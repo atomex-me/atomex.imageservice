@@ -18,8 +18,20 @@ def main(contract, token_id):
         token_id = token_id.split('.')[0]
         tzkt_response = requests.get(f'https://api.tzkt.io/v1/tokens?tokenId={token_id}&contract={contract}')
         if tzkt_response.status_code != 200:
-            print(f'TzKT response not 200 on {contract}/{token_id}\n{tzkt_response.text}')
+            print(f'TzKT error response on {contract}/{token_id}\nResponse text: {tzkt_response.text}')
             return tzkt_response.text, tzkt_response.status_code
+
+        if len(tzkt_response.json()) == 0:
+            tzkt_response = requests.get(
+                f'https://api.ghostnet.tzkt.io/v1/tokens?tokenId={token_id}&contract={contract}')
+            if tzkt_response.status_code != 200:
+                print(f'TzKT error response on {contract}/{token_id}\nResponse text: {tzkt_response.text}')
+                return tzkt_response.text, tzkt_response.status_code
+
+        if len(tzkt_response.json()) == 0:
+            r = f'Token not find on TzKT api {contract}/{token_id}'
+            print(r)
+            return r, 404
 
         json_response = tzkt_response.json()[0]
         artifact_uri = None
@@ -72,8 +84,11 @@ def main(contract, token_id):
                 artifact_file_response = requests.get(f'https://services.tzkt.io/v1/avatars/{contract}')
 
         if artifact_file_response.status_code != 200:
-            print(f'Error downloading {artifact_file_response.url}\n{artifact_file_response.text}')
-            return f'Token image download error {artifact_file_response.url}', artifact_file_response.status_code
+            print(f'Error during downloading artifact from {artifact_file_response.url}\n'
+                  f'Response text: {artifact_file_response.text}')
+
+            return f'Error during downloading artifact from {artifact_file_response.url}', \
+                   artifact_file_response.status_code
 
         content_type = artifact_file_response.headers.get('content-type')
         file_dir = f'static/{contract}'
@@ -87,7 +102,6 @@ def main(contract, token_id):
             img_thumb = crop_max_square(img)
             img_thumb.thumbnail(size)
             img_thumb.save(image_file_name)
-
             return send_file(image_file_name, f'image/{settings["OUTER_IMAGE_FORMAT"]}')
 
         if 'video' in content_type.lower():
@@ -106,10 +120,10 @@ def main(contract, token_id):
 
             os.remove(temp_video_file_name)
             os.remove(temp_image_file_name)
-
     except Exception as e:
         print(f'Exception during getting {contract}/{token_id}\n{e}')
-        return send_file('default.png', f'image/{settings["OUTER_IMAGE_FORMAT"]}')
+        return f'Exception during getting {contract}/{token_id}', 400
+        # return send_file('default.png', f'image/{settings["OUTER_IMAGE_FORMAT"]}')
 
 
 def generate_video_thumbnail(video_file_name, img_file):
