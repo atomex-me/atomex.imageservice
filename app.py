@@ -72,7 +72,8 @@ def main(contract, token_id):
                 artifact_file_response = requests.get(f'https://services.tzkt.io/v1/avatars/{contract}')
 
         if artifact_file_response.status_code != 200:
-            return f'Token image download error {artifact_file_response.url}r', 400
+            print(f'Error downloading {artifact_file_response.url}\n{artifact_file_response.text}')
+            return f'Token image download error {artifact_file_response.url}', artifact_file_response.status_code
 
         content_type = artifact_file_response.headers.get('content-type')
         file_dir = f'static/{contract}'
